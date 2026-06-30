@@ -33,6 +33,9 @@
 
 extern menu_state_t g_menu_state;
 extern float g_port_maxw[];
+extern volatile uint8_t g_port_capw[6];   /* live per-port cap actually applied (W); 0 = no SW cap */
+extern uint8_t g_anim_active;             /* ui.c: page/element/ring/fire animation in progress     */
+extern uint8_t g_anim_playing;            /* anim.c: screensaver frame animation on screen          */
 
 static const char *const k_port[6] = { "C1", "C2", "C3", "C4", "A1", "A2" };
 static uint8_t  s_port;
@@ -46,7 +49,14 @@ static int gline_y(int k) { return GY + (GH - k * GH / 4); }   /* screen-y of va
 
 static float wfull(uint8_t port)
 {
-    float m = g_port_maxw[port];
+    /* Full-scale = the per-port max actually IN FORCE right now. In Smart/Raserei(Turbo) the user
+     * never sets an Individual limit, so g_port_maxw stays 0 and C2/C3/C4 used to fall back to a flat
+     * 100 W default - which is NOT the real ceiling (Raserei caps each C-port at 140 W, Smart at the
+     * live allocation). g_port_capw holds the value pd_maintain_limits() pushed to the chip per mode,
+     * so use it first (same source the debug page shows). Fall back to the configured Individual limit,
+     * then a sane default, so the axis is never zero/blank. */
+    float m = (port < 6u) ? (float)g_port_capw[port] : 0.0f;
+    if (m < 1.0f) m = g_port_maxw[port];
     if (m < 1.0f) m = (port == 0) ? 240.0f : (port < 4) ? 100.0f : 30.0f;
     return m;
 }
@@ -141,6 +151,15 @@ static int put_s(char *b, int p, const char *s) { while (*s) p = put(b, p, *s++)
 
 void ui_graph_tick(void)
 {
+    /* An overlay image or animation (screensaver "eyes", page/element/ring/fire frames - all blitted
+     * full-screen by ui_animate_page/anim_tick LATER in the same main-loop iteration) paints over the
+     * whole panel. If we kept drawing graph columns they would bleed INTO that animation image. So
+     * while any overlay is up, HOLD: draw nothing. When it clears, the overlay has clobbered the grid,
+     * labels and line, so repaint the page from scratch (full clear + axes + fresh history). */
+    static uint8_t s_overlaid;
+    if (g_anim_active || g_anim_playing) { s_overlaid = 1; return; }
+    if (s_overlaid) { s_overlaid = 0; ui_graph_enter(); return; }
+
     static uint32_t t;
     uint32_t now = get_tick_ms();
     if ((uint32_t)(now - t) < GSAMPLE_MS) return;
