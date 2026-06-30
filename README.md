@@ -6,7 +6,7 @@ image and reimplemented from scratch for the display MCU; the result runs on the
 place of the stock app, with the original UI/behaviour plus extras (on‑device debug page, a Watt
 history graph, …).
 
-This repo is made together with these explanation videos:(click on it)
+This repo is made together with this explanation video:(click on it)
 
 [![AOHi 280 W charger running the custom firmware (left) next to a stock unit (right)](Overview.jpg)](https://www.youtube.com/watch?v=1UGUZloDsPU)
 
