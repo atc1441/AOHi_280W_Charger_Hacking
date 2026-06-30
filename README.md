@@ -6,7 +6,9 @@ image and reimplemented from scratch for the display MCU; the result runs on the
 place of the stock app, with the original UI/behaviour plus extras (on‑device debug page, a Watt
 history graph, …).
 
-![AOHi 280 W charger running the custom firmware (left) next to a stock unit (right)](Overview.jpg)
+This repo is made together with these explanation videos:(click on it)
+
+[![AOHi 280 W charger running the custom firmware (left) next to a stock unit (right)](Overview.jpg)](https://www.youtube.com/watch?v=1UGUZloDsPU)
 
 ➡️ **The firmware lives in [`AOHi_280_Firmware/`](AOHi_280_Firmware/)** - build with `make`,
 flash with `flash.ps1` (J‑Link). See that folder's README for the full pinout, register map, and
