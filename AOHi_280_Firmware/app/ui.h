@@ -29,6 +29,7 @@ void ui_mark_initialised(void);   /* mark UI initialised at boot (enables button
 int  ui_boot_done(void);          /* 1 once the boot animation has finished */
 int  ui_is_standby(void);         /* 1 = charging off (stock byte_2000F3DD) */
 void ui_set_charge(int on);       /* set charge on/off (single source of truth) */
+void ui_wake_display(void);       /* wake the panel + force a full repaint (clean wake from sleep) */
 void ui_home_check(void);         /* boot animation state machine (stock ui_home_check) */
 void apply_images(void);
 void ui_draw_watts(uint32_t watts); /* draw total-watts number on the home screen */

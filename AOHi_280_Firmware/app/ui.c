@@ -869,6 +869,17 @@ void ui_set_charge(int on)
     lcd_sleep(on ? 0 : 1);
 }
 
+/* Wake the panel AND force a clean full repaint of the current page. lcd_sleep(0) only issues
+ * SLPOUT + backlight; the GRAM behind the sleeping panel is stale (the live tick redraws only
+ * CHANGED fields, never the whole screen), so a bare wake shows artifacts / partial garbage.
+ * Re-running ui_set_page does a full lcd_fill(black) + complete redraw, so every wake is clean. */
+void ui_wake_display(void)
+{
+    extern void lcd_sleep(int sleep);
+    lcd_sleep(0);                         /* sub_10320(0): panel wake + backlight on */
+    ui_set_page(g_menu_page);             /* full lcd_fill + redraw of whatever page is current */
+}
+
 /* Boot animation (stock ui_home_check @0x18D28). Frames 0..33 = the centre boot
  * logo, one per tick (paced by flag +6 = 120ms), then show home + enable nav.
  * (Confirmed 1:1: the disasm of ui_animate_page's home branch @0x191CC draws the
@@ -913,15 +924,25 @@ void on_menu_btn_click(void)
 
     if (s_disp_off) {                     /* Standby Mode: a press just wakes the display */
         s_disp_off = 0;
-        lcd_sleep(0);                     /* panel wake + setBlPWM(20) -> backlight + home page back */
+        ui_wake_display();                /* panel wake + FULL repaint (was bare lcd_sleep(0): the
+                                           * stale GRAM showed artifacts on the freshly-woken panel) */
         return;
     }
 
     if (s_standby) {                      /* wake from standby (0x2000F3DD) */
         s_standby = 0;
         g_flag_8483 = 0;                  /* [0x1FFF8390+0x83] = 0 */
+        /* Restore the per-port output enables BEFORE re-enabling the charger. The app/WLAN
+         * master-off (wlan_on_set_config cmd 0x06 id 1) clears ALL g_port_enable[] to 0; if we
+         * don't put them back here, a button wake leaves the USB ports dead: charge_set_enable(1)
+         * only re-enables the 0x16 master, while pd_maintain_limits keeps reg 0xA0=1 (kill) on
+         * C2/C3/C4 and the USB-A ports stay masked off (g_channel_mask) because g_port_enable[1..5]
+         * are still 0. Setting them on + update_outputs() rebuilds the all-on channel mask. */
+        { extern uint8_t g_port_enable[]; extern void update_outputs(void);
+          for (int k = 0; k < 6; k++) g_port_enable[k] = 1u;
+          update_outputs(); }             /* rebuild g_channel_mask (all-on) + master enable */
         charge_set_enable(1);             /* sub_DAB0(1) */
-        lcd_sleep(0);                     /* sub_10320(0) wake display */
+        ui_wake_display();                /* sub_10320(0) wake + FULL repaint of the current page */
         wlan_module_reset(0);             /* sub_124B0(0): power the WLAN module back on */
         ports_clear();                    /* sub_12E78(1) reset readings */
         return;
