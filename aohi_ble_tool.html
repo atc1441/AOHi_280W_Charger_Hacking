@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOHi / I4SEASON BK7231N — WebBluetooth Tool · by ATC1441</title>
+<style>
+  :root{--bg:#0f1419;--panel:#1a2129;--panel2:#222b35;--acc:#4ea1ff;--ok:#3ddc84;--warn:#ffb454;--err:#ff5c5c;--txt:#d5dde6;--mut:#8a97a6;}
+  *{box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.45;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  header{background:linear-gradient(90deg,#16202b,#1a2730);padding:14px 20px;border-bottom:1px solid #2a3744;display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:0 0 auto}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header .sub{color:var(--mut);font-size:12px}
+  .pill{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .pill.off{background:#3a2026;color:var(--err)}
+  .pill.on{background:#143524;color:var(--ok)}
+  main{display:grid;grid-template-columns:380px 1fr;gap:16px;padding:16px;max-width:1500px;margin:0 auto;width:100%;flex:1 1 auto;min-height:0;overflow:hidden}
+  main>div{min-height:0}
+  .col-left{overflow:auto}
+  .col-right{display:flex;flex-direction:column}
+  .col-right>.panel:not(.logpanel){flex:0 0 auto}
+  .logpanel{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-bottom:0}
+  .logpanel>h2{flex:0 0 auto}
+  @media(max-width:1000px){main{grid-template-columns:1fr;overflow:auto}.col-left,.col-right{overflow:visible}.logpanel{flex:0 0 auto}}
+  .panel{background:var(--panel);border:1px solid #2a3744;border-radius:10px;padding:14px;margin-bottom:16px}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--acc);margin:0 0 10px}
+  label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid #36444f;color:var(--txt);border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc)}
+  textarea{resize:vertical;font-family:'Consolas',monospace}
+  button{background:var(--acc);color:#06121f;border:none;border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px}
+  button:hover{filter:brightness(1.1)}button:disabled{opacity:.4;cursor:not-allowed}
+  button.sec{background:#33414d;color:var(--txt)}
+  button.danger{background:#5a2630;color:#ffb4bc}
+  .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+  .cmdgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cmdgrid button{background:#2b3a47;color:var(--txt);text-align:left;font-size:12px;padding:9px;
+    min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+  .cmdgrid button b{color:var(--acc)}
+  #log{font-family:'Consolas',monospace;font-size:12px;flex:1 1 auto;min-height:120px;overflow:auto;background:#0b1117;border-radius:8px;padding:10px;border:1px solid #233}
+  .le{padding:4px 6px;border-radius:4px;margin-bottom:3px;white-space:pre-wrap;word-break:break-all}
+  .le.tx{background:#10212e;border-left:3px solid var(--acc)}
+  .le.rx{background:#0e2418;border-left:3px solid var(--ok)}
+  .le.info{color:var(--mut)}
+  .le.err{background:#2a1418;border-left:3px solid var(--err);color:#ffb4bc}
+  .le .t{color:var(--mut);font-size:10px}
+  .le .parse{color:var(--warn)}
+  .hint{font-size:11px;color:var(--mut);margin-top:4px}
+  .tag{display:inline-block;background:#2b3a47;border-radius:4px;padding:1px 6px;font-size:11px;margin:2px 2px 0 0}
+  .muted{color:var(--mut)}
+  details{margin-top:8px}summary{cursor:pointer;color:var(--acc);font-size:12px}
+  code{background:#0b1117;padding:1px 5px;border-radius:4px;color:var(--warn)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔌 AOHi / I4SEASON BK7231N</h1>
+  <span class="sub">WebBluetooth debug tool · 0x55AA protocol · by ATC1441</span>
+  <span id="status" class="pill off">disconnected</span>
+  <span id="devname" class="sub"></span>
+</header>
+
+<main>
+  <!-- LEFT COLUMN -->
+  <div class="col-left">
+    <div class="panel">
+      <h2>Connection</h2>
+      <div class="row">
+        <button id="btnConnect">🔗 Connect</button>
+        <button id="btnDisconnect" class="sec" disabled>Disconnect</button>
+      </div>
+      <details>
+        <summary>GATT UUIDs (from firmware RE, editable)</summary>
+        <label>Service UUID</label>
+        <input id="uuidSvc" value="0000ffff-0000-1000-8000-00805f9b34fb">
+        <label>Write characteristic (app → device)</label>
+        <input id="uuidWrite" value="07af27a5-9c22-11ea-9afe-02fcdc4e7412">
+        <label>Notify characteristic (device → app)</label>
+        <input id="uuidNotify" value="00001234-0000-1000-8000-00805f9b34fb">
+        <label><input type="checkbox" id="optAcceptAll" checked style="width:auto;margin-right:6px">Show all devices (no name filter)</label>
+        <label><input type="checkbox" id="optAutoDiscover" checked style="width:auto;margin-right:6px">Auto-discover: find service/chars automatically</label>
+        <label><input type="checkbox" id="optWriteNoResp" checked style="width:auto;margin-right:6px">Prefer Write-without-Response (recommended for this device)</label>
+        <label><input type="checkbox" id="optFragment" style="width:auto;margin-right:6px">Fragment frames &gt; MTU-3 anyway (device does NOT reassemble — debug only)</label>
+        <label>MTU / max write length (bytes)</label>
+        <input id="inMtu" type="number" min="23" max="517" value="247">
+        <div class="hint">⚠️ WebBluetooth can <b>not</b> request the MTU (the OS negotiates it; Chrome ~247 ⇒ ~244 B payload). This firmware drops writes without the <code>55 AA</code> magic and can <b>not</b> do a long write ⇒ the whole frame must fit in <b>one</b> write ≤ MTU-3.</div>
+        <div class="hint">Name-filter prefix: <b>7231N</b>. If auto-discover fails, the service UUID is probably missing from the list → enter it manually.</div>
+      </details>
+      <div id="discInfo" class="hint"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Known commands</h2>
+      <div class="cmdgrid" id="knownCmds"></div>
+      <div class="hint">A click pre-fills the command builder — review before sending. ⚠️ = changes device configuration.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Protocol reference (from firmware RE)</h2>
+      <div style="font-size:12px">
+        <p><b>BLE frame:</b> <code>55 AA</code> · <code>dir</code> (01=app→device, 00=device→app) · <code>idx</code> · <code>cmd</code> · <code>00</code> · <code>len(2B)</code> · <code>payload</code> · <code>chk</code><br>
+        <span class="muted">Length: TX big-endian, RX little-endian · chk = Σ&amp;0xFF · write→<code>07af27a5</code>(0x22), notify←<code>0x1234</code>(0x24)</span></p>
+        <div>
+          <span class="tag">01 GetDeviceInfo</span>
+          <span class="tag">04 WiFi scan → SSID list</span>
+          <span class="tag">05 ConnectWiFi (SSID[33]+PW[33])</span>
+          <span class="tag">09 Get WiFi config</span>
+          <span class="tag">0C SaveID</span>
+          <span class="tag">10 SetCloudHost (3×host)</span>
+        </div>
+        <div style="margin-top:4px">
+          <span class="tag">device→app <b>03</b> WiFi status: 1=fail · 2=OK · 3=cloud-reg · 4=ready</span>
+        </div>
+        <p class="muted" style="margin-top:8px">App command classes: AcceptBaseInfo / AcceptDynamicInfo / AcceptSchedule / AcceptState / ConnectWifi / ControlDevice / DeviceFirmwareUpdate · Cloud: <code>wss://iotservice.iaohi.com:443/ws/iot1/</code></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="col-right">
+    <div class="panel">
+      <h2>Custom command builder</h2>
+      <div class="row">
+        <div style="flex:1"><label>CMD (hex)</label><input id="inCmd" value="01"></div>
+        <div style="flex:1"><label>Index</label><input id="inIdx" value="00"></div>
+        <div style="flex:1.4"><label>Payload type</label>
+          <select id="inType"><option value="hex">Hex</option><option value="text">Text (ASCII)</option><option value="none">empty</option></select>
+        </div>
+      </div>
+      <label>Payload</label>
+      <textarea id="inPayload" rows="2" placeholder="e.g. 01 02 0a ff  or  text"></textarea>
+      <label>Frame preview</label>
+      <input id="framePreview" readonly style="font-family:monospace;color:var(--ok)">
+      <label>Write characteristic (target)</label>
+      <select id="writeSel"></select>
+      <label style="margin-top:6px"><input type="checkbox" id="optBroadcast" style="width:auto;margin-right:6px">Send to ALL write chars (debug — only if needed)</label>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSend" disabled>📤 Send</button>
+        <button id="btnPreview" class="sec">Preview only</button>
+      </div>
+      <div class="hint">Frame: <code>55 AA 01 idx cmd 00 lenHi lenLo &lt;payload&gt; chk</code> · app→device byte[2]=01 · chk = Σ(all bytes) &amp; 0xFF</div>
+    </div>
+
+    <div class="panel logpanel">
+      <h2>Log (TX / RX)
+        <button id="btnClear" class="sec" style="float:right;padding:3px 10px;font-size:11px">Clear</button>
+        <label style="float:right;margin:0 10px 0 0;font-size:11px"><input type="checkbox" id="optReasm" checked style="width:auto;margin-right:4px">Reassemble frames</label>
+      </h2>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let device=null, server=null, writeChar=null, notifyChar=null;
+
+// ---------- known commands (pre-fill the builder) ----------
+// verified from a real BLE snoop
+const KNOWN = [
+  {name:'GetDeviceInfo', cmd:0x01, type:'none', payload:'', note:'→ I4SEASON+AuthKey+DeviceID+MAC+FW', warn:false},
+  {name:'WiFi scan',     cmd:0x04, type:'none', payload:'', note:'→ list of SSIDs (several notifies)', warn:false},
+  {name:'ConnectWiFi',   cmd:0x05, special:'wifi', note:'SSID[33]+password[33] (66B)', warn:true},
+  {name:'SetCloudHost',  cmd:0x10, special:'cloud', note:'⚠️ host1[39]+host2[39]+host3[39]', warn:true},
+  {name:'Get WiFi config',cmd:0x09, type:'none', payload:'', note:'→ current WiFi configuration', warn:false},
+  {name:'SaveID (0x0C)', cmd:0x0C, type:'none', payload:'', note:'Saves ID', warn:true},
+  {name:'Cmd 0x0E',      cmd:0x0E, type:'none', payload:'', note:'Function unknown', warn:false},
+];
+
+// ConnectWiFi: SSID in a 33-byte field + password in a 33-byte field = 66 bytes (verified from snoop)
+function wifiPayload(ssid,pw){
+  const out=new Array(66).fill(0);
+  new TextEncoder().encode(ssid).slice(0,32).forEach((b,i)=>out[i]=b);     // SSID  @0..32
+  new TextEncoder().encode(pw).slice(0,32).forEach((b,i)=>out[33+i]=b);    // password @33..65
+  return out;
+}
+// SetCloudHost: 3× 39-byte host fields (host1=https://, host2=wss://.../ws/iot1/, host3 empty)
+function cloudPayload(h1,h2,h3){
+  const out=new Array(117).fill(0);
+  new TextEncoder().encode(h1).slice(0,38).forEach((b,i)=>out[i]=b);
+  new TextEncoder().encode(h2).slice(0,38).forEach((b,i)=>out[39+i]=b);
+  new TextEncoder().encode(h3).slice(0,38).forEach((b,i)=>out[78+i]=b);
+  return out;
+}
+
+function buildKnown(){
+  const g=$('knownCmds'); g.innerHTML='';
+  KNOWN.forEach(k=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<b>0x${k.cmd.toString(16).padStart(2,'0')}</b> ${k.name}<br><span class="muted" style="font-size:10px">${k.note}</span>`;
+    b.onclick=()=>{
+      $('inCmd').value=k.cmd.toString(16).padStart(2,'0');
+      if(k.special==='wifi'){
+        const ssid=prompt('WiFi SSID:',''); if(ssid===null) return;
+        const pw=prompt('WiFi password:',''); if(pw===null) return;
+        $('inType').value='hex'; $('inPayload').value=hex(wifiPayload(ssid,pw));
+      } else if(k.special==='cloud'){
+        const h1=prompt('host1 (https://...):','https://iotservice.iaohi.com:443'); if(h1===null) return;
+        const h2=prompt('host2 (wss://.../ws/iot1/):','wss://iotservice.iaohi.com:443/ws/iot1/'); if(h2===null) return;
+        const h3=prompt('host3 (leave empty):',''); if(h3===null) return;
+        $('inType').value='hex'; $('inPayload').value=hex(cloudPayload(h1,h2,h3));
+      } else { $('inType').value=k.type; $('inPayload').value=k.payload; }
+      updatePreview();
+      // send safe read/status commands directly; dangerous ones (warn) only pre-fill
+      if(!k.warn && device && device.gatt.connected) send();
+    };
+    g.appendChild(b);
+  });
+}
+
+// ---------- build frame ----------
+function parseHex(s){ const m=s.replace(/0x/gi,'').match(/[0-9a-f]{2}/gi); return m?m.map(x=>parseInt(x,16)):[]; }
+function payloadBytes(){
+  const t=$('inType').value;
+  if(t==='none') return [];
+  if(t==='text') return Array.from(new TextEncoder().encode($('inPayload').value));
+  return parseHex($('inPayload').value);
+}
+function buildFrame(cmd, idx, payload){
+  const len=payload.length;
+  // app->device: byte[2]=0x01 (direction!), length big-endian [len_hi][len_lo]
+  const f=[0x55,0xAA,0x01, idx&0xff, cmd&0xff, 0x00, (len>>8)&0xff, len&0xff, ...payload];
+  let chk=0; for(const b of f) chk=(chk+b)&0xff;
+  f.push(chk);
+  return f;
+}
+const hex = arr => arr.map(b=>b.toString(16).padStart(2,'0')).join(' ');
+function updatePreview(){
+  try{
+    const cmd=parseInt($('inCmd').value,16)||0, idx=parseInt($('inIdx').value,16)||0;
+    $('framePreview').value=hex(buildFrame(cmd,idx,payloadBytes())).toUpperCase();
+  }catch(e){ $('framePreview').value='—'; }
+}
+['inCmd','inIdx','inType','inPayload'].forEach(id=>$(id).addEventListener('input',updatePreview));
+
+// ---------- logging ----------
+function log(cls,msg,extra){
+  const d=document.createElement('div'); d.className='le '+cls;
+  const ts=new Date().toLocaleTimeString();
+  d.innerHTML=`<span class="t">${ts}</span> ${msg}`+(extra?`<div class="parse">${extra}</div>`:'');
+  $('log').appendChild(d); $('log').scrollTop=$('log').scrollHeight;
+}
+function parseFrame(b){
+  if(b.length<9||b[0]!==0x55||b[1]!==0xAA) return null;
+  // byte[2]=0x01 (app->device, length big-endian) | 0x00 (device->app, little-endian)
+  const len = b[2]===0x01 ? ((b[6]<<8)|b[7]) : (b[6]|(b[7]<<8));
+  const pl=b.slice(8,8+len);
+  const chk=b[8+len];
+  let s=0; for(let i=0;i<8+len;i++) s=(s+b[i])&0xff;
+  const ascii=Array.from(pl).map(c=>c>=32&&c<127?String.fromCharCode(c):'·').join('');
+  return {ver:b[2],idx:b[3],cmd:b[4],len,pl,chk,chkOk:s===chk,ascii,total:9+len};
+}
+// null-terminated ASCII string from offset
+function cstr(a,off,n){ let s=''; for(let i=off;i<off+n&&i<a.length;i++){ if(!a[i])break; s+=String.fromCharCode(a[i]); } return s; }
+// decode known reply frames into readable form (field offsets verified from firmware/snoop)
+function decodeReply(p){
+  const b=p.pl;
+  if(p.cmd===0x01 && b.length>=65){   // GetDeviceInfo reply
+    const mac=Array.from(b.slice(53,59)).map(x=>x.toString(16).padStart(2,'0')).join(':').toUpperCase();
+    return `<b>📋 device info</b> · vendor=<b>${cstr(b,0,8)}</b> · model=<b>${cstr(b,10,8)}</b> · SN=${cstr(b,20,32)} · MAC=<b>${mac}</b> · FW=<b>${cstr(b,59,11)}</b>`;
+  }
+  if(p.cmd===0x04 && b.length>=34){   // WiFi scan entry
+    const sec=b[0]?'🔒':'📶';
+    return `<b>${sec} WiFi</b> "<b>${cstr(b,1,32)}</b>" · idx=${b[35]??'?'} · flag=0x${b[0].toString(16).padStart(2,'0')} · sig=${hex(Array.from(b.slice(33)))}`;
+  }
+  if(p.cmd===0x03 && b.length>=1){    // WiFi connection status after ConnectWiFi
+    const ST={1:'❌ failed',2:'✅ WiFi connected',3:'☁️ cloud registration',4:'🟢 ready'};
+    return `<b>WiFi status:</b> ${ST[b[0]]||('0x'+b[0].toString(16))} (${b[0]})`;
+  }
+  if(p.cmd===0x09 && b.length>=67){   // Get WiFi config reply
+    return `<b>📶 WiFi config</b> · SSID="<b>${cstr(b,0,33)}</b>" · password="<b>${cstr(b,33,33)}</b>" · status=${b[66]}`;
+  }
+  return null;
+}
+function describeRx(b){
+  const p=parseFrame(b);
+  if(!p) return `<span class="muted">not a 0x55AA frame (${b.length}B)</span>`;
+  const dec=decodeReply(p);
+  return `cmd=<b>0x${p.cmd.toString(16).padStart(2,'0')}</b> idx=${p.idx} len=${p.len} chk=${p.chkOk?'OK':'<span style="color:#ff5c5c">BAD</span>'}`
+       + (dec?`<br>${dec}`:'')
+       + (p.len?`<br>payload: ${hex(p.pl)}<br>ascii : "${p.ascii}"`:'');
+}
+
+// ---------- reassembly per notify characteristic ----------
+const rxBufs={};   // uuid -> byte[]
+function onNotify(ev){
+  const src=short(ev.target.uuid);
+  const v=ev.target.value; const chunk=[]; for(let i=0;i<v.byteLength;i++) chunk.push(v.getUint8(i));
+  if(!$('optReasm').checked){ log('rx',`RX [${src}] `+hex(chunk).toUpperCase(), describeRx(chunk)); return; }
+  let buf=(rxBufs[src]||[]).concat(chunk);
+  while(buf.length>=2 && !(buf[0]===0x55&&buf[1]===0xAA)) buf.shift();
+  while(buf.length>=8){
+    const len=buf[6]|(buf[7]<<8); const total=9+len;   // RX length little-endian
+    if(buf.length<total) break;
+    const frame=buf.slice(0,total); buf=buf.slice(total);
+    log('rx',`RX [${src}] `+hex(frame).toUpperCase(), describeRx(frame));
+    while(buf.length>=2 && !(buf[0]===0x55&&buf[1]===0xAA)) buf.shift();
+  }
+  rxBufs[src]=buf;
+}
+
+// ---------- connection ----------
+async function connect(){
+  try{
+    const svc=$('uuidSvc').value.trim().toLowerCase();
+    const wU=$('uuidWrite').value.trim().toLowerCase();
+    const nU=$('uuidNotify').value.trim().toLowerCase();
+    // broad candidate list: the real custom service UUID is unknown -> WebBluetooth only exposes
+    // services listed here. Firmware chars live around the 0x18xx range.
+    const cand=[svc,wU,nU];
+    for(let u=0x1800;u<=0x18ff;u++) cand.push(u);   // 0x18xx (most likely range)
+    for(let u=0xfff0;u<=0xffff;u++) cand.push(u);   // 0xFFFx vendor
+    for(let u=0xfe00;u<=0xfe3f;u++) cand.push(u);   // 0xFExx vendor (selection)
+    cand.push(0x1234,0x180a);
+    const opt={ optionalServices:[...new Set(cand.filter(Boolean))] };
+    if($('optAcceptAll').checked) opt.acceptAllDevices=true;
+    else opt.filters=[{namePrefix:'7231N'},{services:[svc]}];
+    log('info','Device selection…');
+    device=await navigator.bluetooth.requestDevice(opt);
+    $('devname').textContent='· '+(device.name||device.id);
+    device.addEventListener('gattserverdisconnected',onDisc);
+    log('info','Connecting GATT…');
+    server=await device.gatt.connect();
+
+    await autoDiscover(svc,wU,nU);
+    setConnected(true);
+  }catch(e){ log('err','Error: '+e.message); console.error(e); }
+}
+
+let allWritables=[];
+async function autoDiscover(svc,wU,nU){
+  const STD=['00001800-0000-1000-8000-00805f9b34fb','00001801-0000-1000-8000-00805f9b34fb'];
+  const services=await server.getPrimaryServices();
+  let info=[]; allWritables=[]; let notifiables=[];
+  for(const s of services){
+    const std=STD.includes(s.uuid);
+    for(const c of await s.getCharacteristics()){
+      const p=c.properties;
+      const fl=[p.write&&'W',p.writeWithoutResponse&&'Wn',p.notify&&'N',p.read&&'R',p.indicate&&'I'].filter(Boolean).join('');
+      info.push(`${short(s.uuid)}/${short(c.uuid)} [${fl}]`);
+      if(std) continue;
+      if(p.write||p.writeWithoutResponse) allWritables.push(c);
+      if(p.notify||p.indicate) notifiables.push(c);
+    }
+  }
+  $('discInfo').innerHTML='Found:<br>'+info.join('<br>');
+  log('info','Services: '+services.map(s=>short(s.uuid)).join(', '));
+
+  // subscribe only to the real reply channel (0x1234); fallback: first notify char
+  const nChar = notifiables.find(c=>c.uuid===nU) || notifiables[0];
+  if(!nChar) throw new Error('No notify characteristic found');
+  await nChar.startNotifications(); nChar.addEventListener('characteristicvaluechanged',onNotify);
+  log('rx','Notify active: '+short(nChar.uuid));
+  // fill write-char dropdown; prefer the exact match (07af27a5)
+  const sel=$('writeSel'); sel.innerHTML='';
+  allWritables.forEach((c,i)=>{ const o=document.createElement('option'); o.value=i;
+    o.textContent=short(c.uuid)+' ['+[c.properties.write&&'W',c.properties.writeWithoutResponse&&'Wn'].filter(Boolean).join('')+']';
+    sel.appendChild(o); });
+  const pref=allWritables.findIndex(c=>c.uuid===wU);
+  sel.value = pref>=0 ? pref : 0;
+  if(!allWritables.length) throw new Error('No writable characteristic found');
+  log('info',`${allWritables.length} write chars, ${notifiables.length} notify chars found`);
+}
+const short=u=>{const m=/0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb/.exec(u);return m?'0x'+m[1]:u;};
+
+function setConnected(c){
+  $('status').className='pill '+(c?'on':'off'); $('status').textContent=c?'connected':'disconnected';
+  $('btnConnect').disabled=c; $('btnDisconnect').disabled=!c; $('btnSend').disabled=!c;
+}
+function onDisc(){ setConnected(false); for(const k in rxBufs) delete rxBufs[k]; log('err','Disconnected'); }
+async function disconnect(){ if(device&&device.gatt.connected) device.gatt.disconnect(); }
+
+async function writeTo(c,data){
+  const mtu=Math.min(517,Math.max(23,parseInt($('inMtu').value)||512));
+  const maxLen=mtu-3;   // ATT write payload = MTU - 3 (opcode + handle)
+  const canNoResp=c.properties.writeWithoutResponse && c.writeValueWithoutResponse;
+  const canResp=c.properties.write && c.writeValueWithResponse;
+  // Firmware (ble_write_event_dispatch @0x1f1a8) drops writes without the 0xAA55 magic and does
+  // NOT reassemble across multiple ATT writes; a long write (Prepare/Execute) -> "invalid attribute length".
+  // => the complete frame must fit in ONE write-without-response <= MTU-3.
+  const preferNoResp=$('optWriteNoResp').checked;
+  if(data.length<=maxLen){
+    if(preferNoResp && canNoResp){ await c.writeValueWithoutResponse(data); return; }
+    if(canResp){ await c.writeValueWithResponse(data); return; }   // single write request (no long write, since <=MTU-3)
+    if(canNoResp){ await c.writeValueWithoutResponse(data); return; }
+    await c.writeValue(data); return;
+  }
+  // frame > MTU-3: does not fit in one ATT write.
+  if($('optFragment').checked && canNoResp){
+    const n=Math.ceil(data.length/maxLen);
+    log('err',`⚠️ ${data.length}B > MTU-3 (${maxLen}B): sending ${n} fragments — firmware does NOT reassemble, only fragment 1 (with 55AA) is processed, the rest is dropped.`);
+    for(let off=0;off<data.length;off+=maxLen) await c.writeValueWithoutResponse(data.subarray(off,off+maxLen));
+    return;
+  }
+  throw new Error(`Frame ${data.length}B does not fit in one ATT write (max ${maxLen}B at MTU ${mtu}). Device can do neither long write nor multi-write reassembly. → negotiate a higher MTU (Chrome ~247) or shorten the frame.`);
+}
+async function send(){
+  try{
+    const cmd=parseInt($('inCmd').value,16)||0, idx=parseInt($('inIdx').value,16)||0;
+    const frame=buildFrame(cmd,idx,payloadBytes());
+    const data=new Uint8Array(frame);
+    if($('optBroadcast').checked){
+      for(const c of allWritables){
+        try{ await writeTo(c,data); log('tx',`TX [${short(c.uuid)}] `+hex(frame).toUpperCase()); }
+        catch(e){ log('err',`TX [${short(c.uuid)}] ${e.message}`); }
+      }
+      log('info','sent to all '+allWritables.length+' write chars → watch RX', describeRx(frame));
+    } else {
+      const c=allWritables[parseInt($('writeSel').value)||0];
+      await writeTo(c,data);
+      log('tx',`TX [${short(c.uuid)}] `+hex(frame).toUpperCase(), describeRx(frame));
+    }
+    $('inIdx').value=((idx+1)&0xff).toString(16).padStart(2,'0'); updatePreview();  // increment index like the app
+  }catch(e){ log('err','Send error: '+e.message); }
+}
+
+$('btnConnect').onclick=connect;
+$('btnDisconnect').onclick=disconnect;
+$('btnSend').onclick=send;
+$('btnPreview').onclick=()=>{ updatePreview(); log('info','Preview: '+$('framePreview').value); };
+$('btnClear').onclick=()=>$('log').innerHTML='';
+buildKnown(); updatePreview();
+if(!navigator.bluetooth) log('err','WebBluetooth not available — use Chrome/Edge over HTTPS or file:// with the flag enabled.');
+</script>
+</body>
+</html>

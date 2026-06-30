@@ -1,0 +1,8 @@
+# build output
+build/
+boot/build/
+*.o
+*.elf
+*.map
+*.bin
+read.bin
